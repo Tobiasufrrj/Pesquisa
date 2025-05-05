@@ -1,7 +1,6 @@
 let images = [];
 let currentIndex = 0;
 let pauseShown = false;
-let responses = [];
 let dadosIniciais = {};
 
 for (let i = 1; i <= 50; i++) {
@@ -44,7 +43,7 @@ function showImage() {
         pauseShown = true;
         document.getElementById('survey-screen').style.display = 'none';
         document.getElementById('mid-screen').style.display = 'block';
-        return; // 👈 só pausa, e espera ação do usuário
+        return;
     }
 
     if (currentIndex < images.length) {
@@ -59,24 +58,31 @@ function continueSurvey() {
     document.getElementById('mid-screen').style.display = 'none';
     document.getElementById('survey-screen').style.display = 'block';
     showImage();
-    updateProgressBar(); // ✅ garante continuidade da barra após pausa
+    updateProgressBar();
 }
 
 function submitAnswer(answer) {
-    responses.push({
-        imagem: images[currentIndex],
-        resposta: answer,
-        timestamp: new Date().toISOString()
+    const formURL = 'https://docs.google.com/forms/d/e/1FAIpQLSffj5vaGzP7l5D0nGrYRytNADQtbKGr1-Df-6xJgIOgKc5HbA/formResponse';
+
+    const dados = new URLSearchParams();
+    dados.append('entry.1536112537', dadosIniciais.idade);
+    dados.append('entry.530226893', dadosIniciais.genero);
+    dados.append('entry.1687929616', dadosIniciais.escolaridade);
+    dados.append('entry.1224577743', images[currentIndex].split('/').pop());
+    dados.append('entry.138354110', answer);
+
+    fetch(formURL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: dados
+    }).then(() => {
+        currentIndex++;
+        showImage();
+    }).catch(error => {
+        console.error("Erro ao enviar resposta:", error);
+        currentIndex++;
+        showImage();
     });
-
-    currentIndex++;
-
-    // Verifica se é o momento de exibir a pausa
-    if (currentIndex === 24 && !pauseShown) {
-        showImage(); // Isso aciona a pausa corretamente
-    } else {
-        showImage(); // Continua normalmente
-    }
 }
 
 function updateProgressBar() {
@@ -84,50 +90,24 @@ function updateProgressBar() {
     setProgress(percentage);
 }
 
-
 function endSurvey() {
     document.getElementById('survey-screen').style.display = 'none';
     document.getElementById('end-screen').style.display = 'block';
-    downloadResponses();
-}
-
-function downloadResponses() {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Idade,Genero,Escolaridade\n";
-    csvContent += `${dadosIniciais.idade},${dadosIniciais.genero},${dadosIniciais.escolaridade}\n\n`;
-    csvContent += "Imagem,Resposta,Timestamp\n";
-    responses.forEach(row => {
-        csvContent += `${row.imagem},${row.resposta},${row.timestamp}\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "respostas_pesquisa_pardos.csv");
-    document.body.appendChild(link);
-    link.click();
 }
 
 function setProgress(percent) {
     const text = document.getElementById('liquid-text');
     const fill = document.getElementById('liquid-fill');
     const liquidGroup = document.getElementById('liquid-group');
-  
-    // Garante que o valor fique entre 0 e 100
+
     percent = Math.max(0, Math.min(percent, 100));
-  
-    // Atualiza o texto no centro
     text.textContent = `${percent}%`;
-  
-    // Calcula a nova largura do líquido
-    const maxWidth = 300; // largura total do SVG
+
+    const maxWidth = 300;
     const newWidth = (maxWidth * percent) / 100;
-  
-    // Aplica nova largura ao retângulo de preenchimento
     fill.setAttribute("width", newWidth);
-  
-    // Exibe o grupo de líquido (onda + bolhas)
+
     if (liquidGroup) {
-      liquidGroup.style.display = "block";
+        liquidGroup.style.display = "block";
     }
-  }
+}
